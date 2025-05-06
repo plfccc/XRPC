@@ -1,0 +1,3 @@
+jdk=com.x.rpc.serializer.JdkSerializer
+hessian=com.x.rpc.serializer.HessianSerializer
+

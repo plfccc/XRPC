@@ -1,0 +1,52 @@
+package com.x;
+
+/**
+ * @author lingpfeng
+ * @date 2025/04/29 15:50:59
+ * @description TODO
+ */
+
+
+
+import cn.hutool.core.util.IdUtil;
+
+import com.x.rpc.constant.RpcConstant;
+import com.x.rpc.model.RpcRequest;
+import com.x.rpc.protocol.*;
+
+import io.vertx.core.buffer.Buffer;
+import org.junit.jupiter.api.Assertions;
+
+
+public class ProtocolMessageTest {
+
+    public static void testEncodeAndDecode() throws Exception {
+        // 构造消息
+        ProtocolMessage<RpcRequest> protocolMessage = new ProtocolMessage<>();
+        ProtocolMessage.Header header = new ProtocolMessage.Header();
+        header.setMagic(ProtocolConstant.PROTOCOL_MAGIC);
+        header.setVersion(ProtocolConstant.PROTOCOL_VERSION);
+        header.setSerializer((byte) ProtocolMessageSerializerEnum.JDK.getKey());
+        header.setType((byte) ProtocolMessageTypeEnum.REQUEST.getKey());
+        header.setStatus((byte) ProtocolMessageStatusEnum.OK.getValue());
+        header.setRequestId(IdUtil.getSnowflakeNextId());
+        header.setBodyLength(0);
+        RpcRequest rpcRequest = new RpcRequest();
+        rpcRequest.setServiceName("myService");
+        rpcRequest.setMethodName("myMethod");
+        rpcRequest.setServiceVersion(RpcConstant.DEFAULT_SERVICE_VERSION);
+        rpcRequest.setParameterTypes(new Class[]{String.class});
+        rpcRequest.setArgs(new Object[]{"aaa", "bbb"});
+        protocolMessage.setHeader(header);
+        protocolMessage.setBody(rpcRequest);
+
+        Buffer encodeBuffer = ProtocolMessageEncoder.encode(protocolMessage);
+        ProtocolMessage<?> message = ProtocolMessageDecoder.decode(encodeBuffer);
+        System.out.println(message);
+        Assertions.assertNotNull(message);
+    }
+
+    public static void main(String[] args) throws Exception {
+        testEncodeAndDecode();
+    }
+}
