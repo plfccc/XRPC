@@ -2,6 +2,7 @@ package com.x.example.consumer;
 
 import com.x.example.common.model.User;
 import com.x.example.common.service.UserService;
+import com.x.rpc.bootstrap.ConsumerBootstrap;
 import com.x.rpc.proxy.ServiceProxyFactory;
 
 /**
@@ -10,7 +11,11 @@ import com.x.rpc.proxy.ServiceProxyFactory;
  * @description TODO
  */
 public class EasyConsumerExample {
+
     public static void main(String[] args) {
+        // 服务提供者初始化
+        ConsumerBootstrap.init();
+
         UserService userService = ServiceProxyFactory.getProxy(UserService.class);
         User user = new User();
         user.setName("lingpfeng");

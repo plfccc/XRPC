@@ -129,20 +129,20 @@ public class UserServiceImpl implements UserService {
 package com.x.example.provider;
 
 import com.x.example.common.service.UserService;
-import com.x.rpc.RpcApplication;
-import com.x.rpc.registry.LocalRegistry;
-import com.x.rpc.server.HttpServer;
-import com.x.rpc.server.tcp.VertxTcpServer;
+import com.x.rpc.model.ServiceRegisterInfo;
+import com.x.rpc.bootstrap.ProviderBootstrap;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class EasyProviderExample {
     public static void main(String[] args) {
-        // RPC框架初始化
-        RpcApplication.init();
-        // 注册服务
-        LocalRegistry.register(UserService.class.getName(), UserServiceImpl.class);
-        // 启动TCP服务
-        HttpServer httpServer = new VertxTcpServer();
-        httpServer.doStart(RpcApplication.getRpcConfig().getServerPort());
+        // 要注册的服务
+        List<ServiceRegisterInfo<?>> serviceRegisterInfoList = new ArrayList<>();
+        ServiceRegisterInfo<UserService> userServiceRegisterInfo = new ServiceRegisterInfo<>(UserService.class.getName(), UserServiceImpl.class);
+        serviceRegisterInfoList.add(userServiceRegisterInfo);
+        // 初始化
+        ProviderBootstrap.init(serviceRegisterInfoList);
     }
 }
 ```
@@ -224,8 +224,138 @@ my-rpc/
 ├── yu-rpc-easy/           # 简化版实现
 ├── example-common/        # 示例公共模块
 ├── example-consumer/      # 消费者示例
-└── example-provider/      # 提供者示例
+├── example-provider/      # 提供者示例
+├── example-springboot-consumer/  # Spring Boot消费者示例
+└── example-springboot-provider/  # Spring Boot提供者示例
 ```
+
+## Spring Boot集成
+
+X-RPC框架提供了与Spring Boot的无缝集成，通过注解方式简化RPC服务的开发和调用。
+
+### 核心注解
+
+框架提供了三个核心注解用于Spring Boot集成：
+
+1. **@EnableRpc**：启用RPC功能的注解，添加在Spring Boot应用的启动类上
+   - `needServer`：是否需要启动服务器，默认为true
+
+2. **@RpcService**：标识服务提供者的注解，添加在服务实现类上
+   - `interfaceClass`：服务接口类
+   - `serviceVersion`：服务版本，默认为"1.0"
+
+3. **@RpcReference**：服务消费者注解，用于注入远程服务，添加在需要注入服务的字段上
+   - `interfaceClass`：服务接口类
+   - `serviceVersion`：服务版本，默认为"1.0"
+   - `loadBalancer`：负载均衡器类型，默认为轮询
+   - `retryStrategy`：重试策略，默认为不重试
+   - `tolerantStrategy`：容错策略，默认为快速失败
+   - `mock`：是否启用模拟调用，默认为false
+
+### 集成原理
+
+Spring Boot集成基于以下原理实现：
+
+1. 通过`@EnableRpc`注解导入RPC相关的配置类
+2. 使用Spring的Bean生命周期钩子，在应用启动时自动注册和发现服务
+3. 利用Spring的依赖注入机制，自动为标记了`@RpcReference`的字段注入代理对象
+4. 自动扫描并注册标记了`@RpcService`的服务实现类
+
+### 服务提供者示例
+
+```java
+// 1. 在启动类上添加@EnableRpc注解
+@SpringBootApplication
+@EnableRpc
+public class ProviderApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(ProviderApplication.class, args);
+    }
+}
+
+// 2. 在服务实现类上添加@RpcService注解
+@RpcService(interfaceClass = UserService.class)
+public class UserServiceImpl implements UserService {
+    @Override
+    public User getUser(User user) {
+        System.out.println("用户名：" + user.getName());
+        return user;
+    }
+    
+    @Override
+    public short getNumber() {
+        System.out.println("调用getNumber方法");
+        return 1;
+    }
+}
+```
+
+### 服务消费者示例
+
+```java
+// 1. 在启动类上添加@EnableRpc注解
+@SpringBootApplication
+@EnableRpc(needServer = false) // 消费者一般不需要启动服务器
+public class ConsumerApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(ConsumerApplication.class, args);
+    }
+}
+
+// 2. 在需要使用远程服务的类中注入服务
+@RestController
+public class UserController {
+    // 使用@RpcReference注解注入远程服务
+    @RpcReference(interfaceClass = UserService.class)
+    private UserService userService;
+    
+    @GetMapping("/user")
+    public User getUser(String name) {
+        User user = new User();
+        user.setName(name);
+        // 调用远程服务
+        return userService.getUser(user);
+    }
+}
+```
+
+### 配置选项
+
+在Spring Boot应用中，可以通过`application.yml`或`application.properties`配置RPC相关参数：
+
+```yaml
+# RPC配置
+rpc:
+  # 服务器主机名
+  serverHost: localhost
+  # 服务器端口号
+  serverPort: 8080
+  # 注册中心配置
+  registry:
+    # 注册中心类型（local, zookeeper, etcd）
+    registry: zookeeper
+    # 注册中心地址
+    address: localhost:2181
+  # 序列化器类型
+  serializer: Hessian
+  # 负载均衡器类型
+  loadBalancer: roundRobin
+  # 容错策略
+  tolerantStrategy: failFast
+  # 重试策略
+  retryStrategy: fixedInterval
+  # 重试次数
+  retryTimes: 3
+  # 重试间隔（毫秒）
+  retryInterval: 1000
+```
+
+## 最近更新
+
+- 添加了Spring Boot集成的注解支持，包括`@EnableRpc`、`@RpcService`和`@RpcReference`
+- 修复了Registry SPI配置路径错误的问题，将`com.x.rpc.serializer.Registry`更正为`com.x.rpc.registry.Registry`
+- 更新了服务提供者示例代码，使用`ProviderBootstrap`进行服务初始化和注册
+- 添加了Spring Boot集成示例模块
 
 ## 性能优化
 

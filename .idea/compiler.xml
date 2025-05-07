@@ -11,6 +11,9 @@
         <outputRelativeToContentRoot value="true" />
         <module name="x-rpc-core" />
         <module name="yu-rpc-easy" />
+        <module name="example-springboot-provider" />
+        <module name="x-rpc-spring-boot-starter" />
+        <module name="example-springboot-consumer" />
         <module name="example-provider" />
         <module name="example-common" />
         <module name="example-consumer" />

@@ -2,10 +2,20 @@ package com.x.example.provider;
 
 import com.x.example.common.service.UserService;
 import com.x.rpc.RpcApplication;
+import com.x.rpc.bootstrap.ProviderBootstrap;
+import com.x.rpc.config.RegistryConfig;
+import com.x.rpc.config.RpcConfig;
+import com.x.rpc.model.ServiceMetaInfo;
+import com.x.rpc.model.ServiceRegisterInfo;
 import com.x.rpc.registry.LocalRegistry;
+import com.x.rpc.registry.Registry;
+import com.x.rpc.registry.RegistryFactory;
 import com.x.rpc.server.HttpServer;
 import com.x.rpc.server.VertxHttpServer;
 import com.x.rpc.server.tcp.VertxTcpServer;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author lingpfeng
@@ -14,14 +24,11 @@ import com.x.rpc.server.tcp.VertxTcpServer;
  */
 public class EasyProviderExample {
     public static void main(String[] args) {
-        //rpc框架初始化
-        RpcApplication.init();
-        //注册服务
-        LocalRegistry.register(UserService.class.getName(), UserServiceImpl.class);
-
-        //启动web服务
-        HttpServer httpServer = new VertxTcpServer();
-
-        httpServer.doStart(RpcApplication.getRpcConfig().getServerPort());
+        //要注册的服务
+        List<ServiceRegisterInfo<?>> serviceRegisterInfoList = new ArrayList<>();
+        ServiceRegisterInfo<UserService> userServiceRegisterInfo = new ServiceRegisterInfo<>(UserService.class.getName(), UserServiceImpl.class);
+        serviceRegisterInfoList.add(userServiceRegisterInfo);
+        //初始化
+        ProviderBootstrap.init(serviceRegisterInfoList);
     }
 }
